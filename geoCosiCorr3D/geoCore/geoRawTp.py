@@ -87,7 +87,7 @@ class RawMMTP(RawGeoTP):
         self.scale_factor = float( C.ASIFT_TP_PARAMS.SCALE_FACTOR \
                                       if self.in_config.get("scale_factor",  C.ASIFT_TP_PARAMS.SCALE_FACTOR) is None \
                                       else self.in_config.get("scale_factor",  C.ASIFT_TP_PARAMS.SCALE_FACTOR))
-
+        logging.info(f"{self.scale_factor=}")
         self.mode = self.in_config.get("mode",  C.ASIFT_TP_PARAMS.MODE)  ## mode : MulScale,All, Line,Georef
         self.tp_format = self.in_config.get("tp_format", "COSI-Corr")
         self.tmp_dir = self.in_config.get("mm_temp_folder", None)

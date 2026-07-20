@@ -4,7 +4,7 @@
 # Copyright (C) 2022
 """
 import os.path
-
+import logging
 import numpy as np
 import pandas
 
@@ -19,7 +19,7 @@ def opt_report(reportPath, snrTh=0.9, debug=False, plotError=True):
     avgErrorList = []
     for loop_ in range(totalNbLoop + 1):
         if debug:
-            print("------ Loop:{} -------".format(loop_))
+            logging.info("------ Loop:{} -------".format(loop_))
         itemList = []
         dxPixList = []
         dyPixList = []
@@ -45,14 +45,14 @@ def opt_report(reportPath, snrTh=0.9, debug=False, plotError=True):
         xyErrorAvg = np.sqrt(dxPixAvg ** 2 + dyPixAvg ** 2)
         xyRMSE = np.sqrt(dxPixRMSE ** 2 + dyPixRMSE ** 2)
         if debug:
-            print("#GCPs:{} --> #NaNs:{} ; #snrTh >{}:{}".format(len(itemList), len(nanList), snrTh, len(snrThList)))
-            print("dxPixAvg:{}  , xRMSE:{}".format("{0:.4f}".format(dxPixAvg),
+            logging.info("#GCPs:{} --> #NaNs:{} ; #snrTh >{}:{}".format(len(itemList), len(nanList), snrTh, len(snrThList)))
+            logging.info("dxPixAvg:{}  , xRMSE:{}".format("{0:.4f}".format(dxPixAvg),
 
                                                    "{0:.2f}".format(dxPixRMSE)))
-            print("dyPixAvg:{}  , yRMSE:{}".format("{0:.4f}".format(dyPixAvg),
+            logging.info("dyPixAvg:{}  , yRMSE:{}".format("{0:.4f}".format(dyPixAvg),
 
                                                    "{0:.2f}".format(dyPixRMSE)))
-            print("xyErrorAvg:{}  , xyRMSE:{}".format("{0:.4f}".format(xyErrorAvg),
+            logging.info("xyErrorAvg:{}  , xyRMSE:{}".format("{0:.4f}".format(xyErrorAvg),
 
                                                       "{0:.2f}".format(xyRMSE)))
         loopList.append(loop_)
@@ -60,7 +60,7 @@ def opt_report(reportPath, snrTh=0.9, debug=False, plotError=True):
         avgErrorList.append(xyErrorAvg)
     indexMin = np.argmin(avgErrorList)
     # if debug:
-    print("Loop of Min Error:{} --> RMSE:{:.3f} , avgErr:{:.3f}".format(loopList[indexMin], np.min(rmseList),
+    logging.info("Loop of Min Error:{} --> RMSE:{:.3f} , avgErr:{:.3f}\n".format(loopList[indexMin], np.min(rmseList),
                                                                         np.min(avgErrorList)))
     if plotError:
         import matplotlib.pyplot as plt

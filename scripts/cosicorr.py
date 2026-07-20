@@ -13,12 +13,15 @@ import logging
 import os
 import numpy as np
 from pathlib import Path
+import sys
 
 import geoCosiCorr3D.geoCore.constants as C
 import geoCosiCorr3D.georoutines.geo_utils as geo_utils
 from geoCosiCorr3D.geoCosiCorr3dLogger import geoCosiCorr3DLog
 from geoCosiCorr3D.geoImageCorrelation.correlate import Correlate
 
+
+geoCosiCorr3DLog(sys.argv[1])  # Put this here because otherwise the log handlers weren't being set correctly
 
 def parse_list(value):
     return [float(item) for item in value.split(',')]
@@ -42,7 +45,7 @@ def ortho_func(args):
 
         else:
             o_ortho_path = args.o_ortho
-        geoCosiCorr3DLog('Orthorectification', os.path.dirname(o_ortho_path))
+        #geoCosiCorr3DLog('Orthorectification', os.path.dirname(o_ortho_path))
 
         orthorectify(args.input_img, o_ortho_path, ortho_params, None, args.dem, args.debug)
 
@@ -63,7 +66,7 @@ def ortho_func(args):
 
             else:
                 o_ortho_path = args.o_ortho
-            geoCosiCorr3DLog('Orthorectification', os.path.dirname(o_ortho_path))
+           # geoCosiCorr3DLog('Orthorectification', os.path.dirname(o_ortho_path))
 
             orthorectify(args.input_img, o_ortho_path, ortho_params, None, args.dem, args.refine,
                          args.gcps, args.ref_img, args.debug, args.show)
@@ -89,7 +92,8 @@ def transform_func(args):
 
 
 def correlate_func(args):
-    print(f'Executing correlation module :{args}')
+    #geoCosiCorr3DLog(log_prefix='Correlation')
+    logging.info(f'Executing correlation module :{args}')
     corr_config = {}
 
     if args.method == C.CORR_METHODS.FREQUENCY_CORR.value:
@@ -128,7 +132,7 @@ def correlate_func(args):
 
 
 def batch_correlate_func(args):
-    geoCosiCorr3DLog('Batch Correlation', os.getcwd())
+    #geoCosiCorr3DLog('Batch Correlation', os.getcwd())
     logging.info(f'Executing batch correlation module :{args}')
 
     base_images = []
@@ -194,7 +198,7 @@ def batch_correlate_func(args):
 
 
 def multiband_correlate_func(args):
-    geoCosiCorr3DLog('Multiband Correlation', os.getcwd())
+    #geoCosiCorr3DLog('Multiband Correlation', os.getcwd())
     logging.info(f'Executing multiband correlation module :{args}')
 
     # Load the input image and get the number of bands
@@ -417,6 +421,9 @@ def cosicorr():
 
     args = parser.parse_args()
 
+    for arg, value in vars(args).items():
+        logging.info(f"Argument {arg}: {value}")
+    
     if hasattr(args, 'func'):
         args.func(args)
     else:

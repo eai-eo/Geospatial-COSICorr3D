@@ -65,6 +65,7 @@ class cMicMacTp(RawMMTP):
         tmp_ref_img_path = self.generate_tmp_raster(self.ref_img_path)
         tmp_raw_img_path = self.generate_tmp_raster(self.raw_img_path)
         tmp_raster_info = cRasterInfo(tmp_raw_img_path)
+        logging.info(f"{tmp_raster_info=}")
         img_size = self.set_img_size(img_width=tmp_raster_info.raster_width, img_height=tmp_raster_info.raster_height)
         self.run_mm_tapioca(mm_lib_path=self.MM_LIB_PATH, mode=self.mode, in_imgs_folder=self.tmp_dir,
                             img_size=img_size)

@@ -520,7 +520,7 @@ class cGCPOptimization:
 
         df_report = pandas.DataFrame.from_dict(report_dict)
         if self.debug:
-            logging.info(f"opt_report:{df_report}")
+            logging.info(f"opt_report:\n{df_report}\n")
 
         self.opt_report_path = os.path.join(os.path.dirname(self.opt_gcp_file),
                                             Path(self.opt_gcp_file).stem + ".opt_report.csv")

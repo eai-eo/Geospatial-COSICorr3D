@@ -58,7 +58,7 @@ def correlate_func(args):
 
 
 def batch_correlate_func(args):
-    geoCosiCorr3DLog('Batch Correlation', os.getcwd())
+    geoCosiCorr3DLog('BatchCorrelation', os.getcwd())
     logging.info(f'Executing batch correlation module :{args}')
 
     base_images = []
