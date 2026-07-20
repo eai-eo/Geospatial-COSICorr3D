@@ -7,6 +7,7 @@
 import ctypes
 import logging
 import os
+import shutil
 import sys
 from inspect import currentframe
 from typing import Dict, Optional
@@ -563,7 +564,7 @@ def orthorectify(input_l1a_path: str,
     logging.info(f'sat_model:{sat_model}')
     config = rcfg.ConfigReader(config_file=CONFIG_FN).get_config
     if refine:
-        workspace_folder = os.path.dirname(output_ortho_path)
+        workspace_folder = os.path.dirname(os.path.abspath(output_ortho_path))
         if gcp_fn is None:
             from geoCosiCorr3D.geoOptimization.gcpOptimization import \
                 cGCPOptimization
@@ -571,17 +572,22 @@ def orthorectify(input_l1a_path: str,
             from geoCosiCorr3D.geoTiePoints.wf_features import features
             if ref_img_path is None:
                 raise ValueError('ref_img_path cannot be None')
+            logging.info("Finding tie points")
             match_file = features(img1=ref_img_path,
                                   img2=input_l1a_path,
                                   tp_params=config[C.ConfigKeys.FEATURE_PTS_PARAMS],
                                   output_folder=workspace_folder,
                                   show=False)
+            logging.info(f"{match_file=}")
+            logging.info("Converting tie points to gcps")
             gcps = tp2gcp(in_tp_file=match_file,
                           base_img_path=input_l1a_path,
                           ref_img_path=ref_img_path,
                           dem_path=dem_path,
                           debug=show)
             gcps()
+            logging.info("Optimizing gcps")
+            logging.info(f"{gcps.output_gcp_path=}")
             opt = cGCPOptimization(gcp_file_path=gcps.output_gcp_path,
                                    raw_img_path=input_l1a_path,
                                    ref_ortho_path=ref_img_path,
@@ -592,6 +598,75 @@ def orthorectify(input_l1a_path: str,
             opt()
             logging.info(f'correction model file:{opt.corr_model_file}')
             ortho_params['method']['corr_model'] = opt.corr_model_file
+        else:
+            # logging.info("A gcp file was found. Not using it, skipping refinement")
+            logging.info("A gcp file was found. Attempting to use it as a tie point file to do TpsToGcps and refinement")
+            from geoCosiCorr3D.geoOptimization.gcpOptimization import \
+                cGCPOptimization
+            from geoCosiCorr3D.geoTiePoints.Tp2GCPs import TpsToGcps as tp2gcp
+            logging.info("Converting tie points to gcps")
+            gcp_fn = shutil.copy2(gcp_fn, workspace_folder)  # move the gcps_fn file to the working folder so that the outputs from the following functions get saved in the correct place.
+            gcps = tp2gcp(in_tp_file=gcp_fn,
+                          base_img_path=input_l1a_path,
+                          ref_img_path=ref_img_path,
+                          dem_path=dem_path,
+                          debug=show)
+            gcps()
+            logging.info("Optimizing gcps")
+            logging.info(f"{gcps.output_gcp_path=}")
+            opt = cGCPOptimization(gcp_file_path=gcps.output_gcp_path,
+                                   raw_img_path=input_l1a_path,
+                                   ref_ortho_path=ref_img_path,
+                                   sat_model_params=sat_model,
+                                   dem_path=dem_path,
+                                   opt_params=config[C.ConfigKeys.OPT_PARAMS],
+                                   debug=debug)
+            opt()
+            logging.info(f'correction model file:{opt.corr_model_file}')
+            ortho_params['method']['corr_model'] = opt.corr_model_file
+    else:
+        if gcp_fn:
+            logging.info("EXPERIMENTAL - Correcting the RSM model without refining the gcps")
+            from geoCosiCorr3D.geoOptimization.RSM_Refinement import cRSMRefinement
+            from geoCosiCorr3D.geoTiePoints.Tp2GCPs import TpsToGcps as tp2gcp
+            import pandas
+            from geoCosiCorr3D.geoCore.core_RSM import RSM
+            from pathlib import Path
+            import geoCosiCorr3D.georoutines.geo_utils as geoRT
+            logging.info("Converting tie points to gcps")
+            gcps = tp2gcp(in_tp_file=gcp_fn,
+                          base_img_path=input_l1a_path,
+                          ref_img_path=ref_img_path,
+                          dem_path=dem_path,
+                          debug=show)
+            gcps()
+            gcp_df = pandas.read_csv(gcps.output_gcp_path)
+
+            gcp_df_corr = gcp_df.copy()
+            ref_epsg = geoRT.cRasterInfo(ref_img_path).epsg_code
+            if ref_epsg != 4326:
+                gcp_epsg = gcp_df.get('epsg', [None])[0]
+                if gcp_epsg != ref_epsg:
+                    logging.warning(f'Convert GCPs from {4326} --> {ref_epsg} instead of {gcp_epsg}')
+                    x_map, y_map = geoRT.Convert.coord_map1_2_map2(X=gcp_df.get('lat'),
+                                                               Y=gcp_df.get('lon'),
+                                                               targetEPSG=ref_epsg,
+                                                               sourceEPSG=4326)
+                    gcp_df_corr['x_map'] = x_map
+                    gcp_df_corr['y_map'] = y_map
+                    gcp_df_corr['epsg'] = gcp_df.shape[0] * [ref_epsg]
+
+            sat_model_rsm = RSM.build_RSM(metadata_file=sat_model.METADATA, sensor_name=sat_model.SENSOR, debug=debug)
+
+            logging.info("Creating an RSM refinement file")
+            rsm_refinement = cRSMRefinement(rsm_model=sat_model_rsm,
+                                        gcps_df=gcp_df_corr, debug=debug)
+            corr_model = rsm_refinement()
+            corr_model_file = os.path.join(os.path.dirname(gcps.output_gcp_path),
+                                                Path(gcps.output_gcp_path).stem + "EXPERIMENTALcorrection.txt")
+            np.savetxt(corr_model_file, corr_model)
+            logging.info(f'correction model file:{corr_model_file}')
+            ortho_params['method']['corr_model'] = corr_model_file
 
     if sat_model.SAT_MODEL == C.SATELLITE_MODELS.RFM:
         ortho = RFMOrtho(input_l1a_path=input_l1a_path,
